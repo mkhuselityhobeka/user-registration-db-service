@@ -6,6 +6,8 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.UUID;
 
+import org.springframework.beans.factory.annotation.Autowired;
+
 /*
  * event listner class, listening to the events published by the RegistrationCompleteEvent class
  */
@@ -17,6 +19,7 @@ import org.springframework.stereotype.Component;
 
 import com.funda.registration.db.service.RegistrationDBService.entity.UserRegistration;
 import com.funda.registration.db.service.RegistrationDBService.events.RegistrationCompleteEvent;
+import com.funda.registration.db.service.RegistrationDBService.service.UserRegistrtionService;
 
 
 @Component
@@ -25,7 +28,11 @@ public class RegistrationListner  implements ApplicationListener<RegistrationCom
 	
 	private JavaMailSender javaMailSender;
 	private UserRegistration registration;
-	
+
+	@Autowired 
+	UserRegistrtionService registrtionService;
+	String verificationToken ="";
+    URL url = null;
 	
 	RegistrationListner(UserRegistration registration, JavaMailSender javaMailSender){
 		
@@ -38,18 +45,25 @@ public class RegistrationListner  implements ApplicationListener<RegistrationCom
 	@Override
 	public void onApplicationEvent(RegistrationCompleteEvent event) {
 	
-		registration = event.getRegistration();
-		String verificationToken = UUID.randomUUID().toString();
-	    URL url = null;
+	
 		try {
-			url = new URL("http://localhost:4200/registration");
+			
+			registration = event.getRegistration();
+			verificationToken = UUID.randomUUID().toString();
+			registrtionService.createVerificationToken(registration, verificationToken);
+			url = new URL("http://localhost:8082/funda/user/conform-registration?token="+verificationToken );
+			
+		
 		} catch (MalformedURLException e) {
-			// TODO Auto-generated catch block
+		
 			e.printStackTrace();
 		}
+		
 		String recipientAddress = registration.getUsername();
 		String subject = "REGISTRATION CONFORMATION";
-		String message = "Hi " + registration.getSName() + "\n" + "\n" + "Thank you registering with us." + "Please click on the link "  + url + "to activate your account" + "\n" + "Kind regards" + "\n" + "Mkhuseli";
+		
+		String message = "Hi " + registration.getSName() + "\n" + "\n" + "Thank you for registering with us. Please click on the link " 
+		                              + url + " to activate your account." + '\n' +'\n'+ "Kind regards" + '\n' +'\n' +"Mkhuseli Tyhobeka";
 		
 		SimpleMailMessage mailMessage  = new SimpleMailMessage();
 		mailMessage.setTo(recipientAddress);

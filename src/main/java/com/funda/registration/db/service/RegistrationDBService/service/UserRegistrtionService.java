@@ -5,15 +5,27 @@ import javax.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import com.funda.registration.db.service.RegistrationDBService.entity.UserRegistration;
+import com.funda.registration.db.service.RegistrationDBService.entity.VerificationToken;
 import com.funda.registration.db.service.RegistrationDBService.repository.UserRegistrationRepo;
+import com.funda.registration.db.service.RegistrationDBService.repository.UserVerificationRepo;
 import com.funda.registration.db.service.RegistrationDBService.service.exceptions.UsernameExistsException;
+import com.funda.registration.db.service.RegistrationDBService.serviceInterface.UserRegistrationInterface;
 
 @Service
 @Transactional
-public class UserRegistrtionService {
+public class UserRegistrtionService implements UserRegistrationInterface{
 
 	@Autowired
 	UserRegistrationRepo registrationRepo;
+	
+	@Autowired
+	UserRegistrationInterface registrationInterface;
+	
+	@Autowired
+	UserVerificationRepo userVerificationRepo;
+	
+	@Autowired
+	VerificationToken verification;
 	
 	/*
 	 register user
@@ -60,5 +72,42 @@ public class UserRegistrtionService {
 		}
 		
 	}
+
+	
+	
+	@Override
+	public UserRegistration getRegistration(String verificationToken) {
+		
+		UserRegistration registration = userVerificationRepo.findByToken(verificationToken).getRegistration();
+		
+		return registration;
+	}
+
+	
+	@Override
+	public VerificationToken getVerificationToken(String verificationToken) {
+		
+		VerificationToken token = userVerificationRepo.findByToken(verificationToken);
+		
+		return token;
+	}
+
+	
+	@Override
+	public void createVerificationToken(UserRegistration registration, String verificationToken) {
+		
+		verification = new VerificationToken(registration, verificationToken);
+		
+		userVerificationRepo.save(verification);
+		
+	}
+
+	@Override
+	public void saveRegisteredUser(UserRegistration registration) {
+	
+		registrationRepo.save(registration);
+	}
+	
+	
 	
 }

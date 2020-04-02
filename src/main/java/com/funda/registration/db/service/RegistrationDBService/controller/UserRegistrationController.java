@@ -33,6 +33,7 @@ import org.springframework.jms.annotation.JmsListener;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 
@@ -41,6 +42,7 @@ import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.funda.registration.db.service.RegistrationDBService.dto.UserRegistrationDTO;
 import com.funda.registration.db.service.RegistrationDBService.entity.UserRegistration;
+import com.funda.registration.db.service.RegistrationDBService.entity.VerificationToken;
 import com.funda.registration.db.service.RegistrationDBService.events.RegistrationCompleteEvent;
 import com.funda.registration.db.service.RegistrationDBService.service.UserRegistrtionService;
 import com.funda.registration.db.service.RegistrationDBService.service.exceptions.UsernameExistsException;
@@ -484,7 +486,8 @@ public class UserRegistrationController {
 	};
       
 	  @Autowired
-      ApplicationEventPublisher applicationEventPublisher;
+    
+	  ApplicationEventPublisher applicationEventPublisher;
       
 	  public  UserRegistrationController( UserRegistration registration, UserRegistrationDTO userRegistrationDTO,
 			                         UserRegistrtionService registrtionService){
@@ -545,4 +548,32 @@ public class UserRegistrationController {
 		return ResponseEntity.ok(registrtionService.getAllRegisteredUsers());
 	}
 
+	/*
+	 * confirm registration
+	 */
+	
+	@GetMapping("user/conform-registration")
+	public String cornfirmRegistration(@RequestParam("token") String token) {
+		
+		VerificationToken verificationtoken = registrtionService.getVerificationToken(token);
+		
+		if(verificationtoken == null){
+			
+			log.info("verificationtoken is invalid");
+			
+			return "This token is invalid";
+		
+		}else {
+			
+			UserRegistration registration = verificationtoken.getRegistration();// get registered user from verification token
+			registration.setEnabled(true); // user is verified
+			registrtionService.saveRegisteredUser(registration);
+			
+			log.info(registration.getSName() + " Congratulations your account has been registred");
+			
+			return registration.getSName() + " Congratulations your account has been registred" ;
+		}
+		
+		
+	}
 }
