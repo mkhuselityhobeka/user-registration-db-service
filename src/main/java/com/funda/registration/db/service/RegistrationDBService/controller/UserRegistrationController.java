@@ -9,7 +9,6 @@ import java.util.Enumeration;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-
 import javax.servlet.AsyncContext;
 import javax.servlet.DispatcherType;
 import javax.servlet.RequestDispatcher;
@@ -24,29 +23,35 @@ import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import javax.servlet.http.HttpUpgradeHandler;
 import javax.servlet.http.Part;
-
 import org.dozer.DozerBeanMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.ResponseEntity;
 import org.springframework.jms.annotation.JmsListener;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-
+import org.springframework.web.servlet.view.RedirectView;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.funda.registration.db.service.RegistrationDBService.dto.PasswordDTO;
 import com.funda.registration.db.service.RegistrationDBService.dto.UserRegistrationDTO;
 import com.funda.registration.db.service.RegistrationDBService.entity.UserRegistration;
 import com.funda.registration.db.service.RegistrationDBService.entity.VerificationToken;
 import com.funda.registration.db.service.RegistrationDBService.events.RegistrationCompleteEvent;
+import com.funda.registration.db.service.RegistrationDBService.service.ResePasswordTokenService;
+import com.funda.registration.db.service.RegistrationDBService.service.ResetPasswordEmailService;
 import com.funda.registration.db.service.RegistrationDBService.service.UserRegistrtionService;
+import com.funda.registration.db.service.RegistrationDBService.service.exceptions.UsernameDoesNotExistException;
 import com.funda.registration.db.service.RegistrationDBService.service.exceptions.UsernameExistsException;
-
 import lombok.extern.slf4j.Slf4j;
 
 
@@ -54,6 +59,7 @@ import lombok.extern.slf4j.Slf4j;
 @RestController
 @RequestMapping("/funda")
 @Slf4j
+@CrossOrigin(origins = "http://localhost:4200")
 public class UserRegistrationController {
 	
 	  private ObjectMapper mapper = new ObjectMapper() ; 
@@ -62,9 +68,13 @@ public class UserRegistrationController {
   	  UserRegistrationDTO userRegistrationDTO;
   
 	  UserRegistration registration ;
-		 
-      UserRegistrtionService registrtionService;
-	
+	  UserRegistrtionService registrtionService;
+		
+	  
+	  BCryptPasswordEncoder bCryptPasswordEncoder = new BCryptPasswordEncoder(); // password encode
+      
+	  @Autowired 
+	  ResetPasswordEmailService emailService;
      
       HttpServletRequest request = new HttpServletRequest() {
 		
@@ -485,10 +495,13 @@ public class UserRegistrationController {
 		}
 	};
       
-	  @Autowired
-    
+	  @Autowired  
+	 
 	  ApplicationEventPublisher applicationEventPublisher;
       
+	  @Autowired
+	  ResePasswordTokenService resePasswordTokenService;
+	  
 	  public  UserRegistrationController( UserRegistration registration, UserRegistrationDTO userRegistrationDTO,
 			                         UserRegistrtionService registrtionService){
 		  this.registration = registration;
@@ -514,7 +527,8 @@ public class UserRegistrationController {
 			log.info("read data from user regitration queue " + registration);
           
 			try {
-            	
+				
+				registration.setPassword(bCryptPasswordEncoder.encode(registration.getPassword()));
 				registration = registrtionService.enrollUser(registration);
 				
 				if(registration ==  null) {
@@ -536,8 +550,6 @@ public class UserRegistrationController {
 			return ResponseEntity.ok("succesfully registered user " + registration);
 		}
 		
-		
-	
 	
 	/*
 	 get all users
@@ -553,27 +565,99 @@ public class UserRegistrationController {
 	 */
 	
 	@GetMapping("user/conform-registration")
-	public String cornfirmRegistration(@RequestParam("token") String token) {
+	public RedirectView confirmRegistration(@RequestParam("token") String token,RedirectView redirectView) {
+		
+		String url = "http://localhost:4200/confirm";
+		redirectView.setUrl(url);
 		
 		VerificationToken verificationtoken = registrtionService.getVerificationToken(token);
 		
 		if(verificationtoken == null){
-			
-			log.info("verificationtoken is invalid");
-			
-			return "This token is invalid";
+			//redirectView.setUrl(url);	
+		
+			return redirectView;
 		
 		}else {
 			
 			UserRegistration registration = verificationtoken.getRegistration();// get registered user from verification token
 			registration.setEnabled(true); // user is verified
-			registrtionService.saveRegisteredUser(registration);
+			registrtionService.saveRegisteredUser(registration);		
+		
 			
-			log.info(registration.getSName() + " Congratulations your account has been registred");
-			
-			return registration.getSName() + " Congratulations your account has been registred" ;
+			 return redirectView; 
 		}
 		
 		
+	}
+	
+	/*
+	 send password reset link
+	 */
+	@PostMapping("user/reset-password")
+	public ResponseEntity<UserRegistration> sendpasswordResetlink(@RequestBody String username)  throws UsernameDoesNotExistException{
+		
+		try {
+			
+			registration = registrtionService.findByUserName(username);
+			
+			if(registration == null) {
+				
+				throw new UsernameDoesNotExistException(registration.getUsername() + "THIS USERNAME IS NOT REGISTERED");
+			}
+		
+		}catch (UsernameDoesNotExistException usernameDoesNotExistException) {
+			
+			usernameDoesNotExistException.printStackTrace();
+		}
+		
+		//registration.setPassword(registration.getPassword());
+		emailService.resetPasswordEmailMessage(registration);
+		
+		
+		return ResponseEntity.ok(registration);
+		
+	}
+	
+	/*
+	 display change password page
+	 */
+	@GetMapping("user/change-password")
+	public RedirectView displayResetPasswordPage(@RequestParam ("token") String token,@RequestParam("id") long id, RedirectView redirectView){
+	            
+		  String validatepasswordToken = resePasswordTokenService.validateResetPassWordToken(id, token);
+		  String url = "http://localhost:4200/reset-password-page";
+		  redirectView.setUrl(url);
+	
+		  log.info("validatepasswordToken is " + validatepasswordToken);
+	     
+		  if(validatepasswordToken == null) {
+
+			  	log.info("This token is invalid or broken");
+	    	  return redirectView;
+	      }else {
+	    	 
+	    	  	log.info("This token is valid");
+	    	  return redirectView;
+	      }
+		  
+			
+	}
+	
+	/*
+	 *save updated password
+	 */
+	@PostMapping("user/save-password")
+	public String savePassword(@RequestBody PasswordDTO passwordDTO){
+		 
+		UserRegistration registration = (UserRegistration) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+		
+		if(registration == null) {
+			
+			return "password could not be changed ...Please try again";
+		}
+		
+		 registrtionService.saveupdatedPassword(registration, passwordDTO.getPassword());
+		 
+		 return "your password has been changes!!!";
 	}
 }

@@ -54,6 +54,7 @@ public class UserRegistration implements Serializable {
 	
 	@NotBlank(message = "username cannot be empty")
 	@NotNull
+	@Column(unique = true)
 	private String username;
 	
 	private boolean enabled;
