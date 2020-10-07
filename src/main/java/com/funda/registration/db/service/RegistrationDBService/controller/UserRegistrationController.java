@@ -4,6 +4,8 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.security.Principal;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Enumeration;
 import java.util.List;
@@ -43,7 +45,9 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.funda.registration.db.service.RegistrationDBService.dto.PasswordDTO;
+import com.funda.registration.db.service.RegistrationDBService.dto.RolesDTO;
 import com.funda.registration.db.service.RegistrationDBService.dto.UserRegistrationDTO;
+import com.funda.registration.db.service.RegistrationDBService.entity.Roles;
 import com.funda.registration.db.service.RegistrationDBService.entity.UserRegistration;
 import com.funda.registration.db.service.RegistrationDBService.entity.VerificationToken;
 import com.funda.registration.db.service.RegistrationDBService.events.RegistrationCompleteEvent;
@@ -62,12 +66,13 @@ import lombok.extern.slf4j.Slf4j;
 @CrossOrigin(origins = "http://localhost:4200")
 public class UserRegistrationController {
 	
-	  private ObjectMapper mapper = new ObjectMapper() ; 
+	  private ObjectMapper mapper = new ObjectMapper(); 
 	  private DozerBeanMapper beanMapper = new DozerBeanMapper();
 	
   	  UserRegistrationDTO userRegistrationDTO;
-  
+      RolesDTO rolesDTO ;
 	  UserRegistration registration ;
+	  Roles roles;
 	  UserRegistrtionService registrtionService;
 		
 	  
@@ -521,14 +526,24 @@ public class UserRegistrationController {
 	 public ResponseEntity<String> saveUser(@RequestBody String message) throws JsonMappingException, JsonProcessingException {
 					
 			userRegistrationDTO = mapper.readValue(message, UserRegistrationDTO.class);
+			Collection<RolesDTO> rolesDTOCollection = userRegistrationDTO.getRoles();
+
+			for(RolesDTO rolesDTO : rolesDTOCollection) {
+				rolesDTO.getId();
+				rolesDTO.getRoleType();
+				rolesDTO.getRegistration();
+				roles = beanMapper.map(rolesDTO, Roles.class);
+			}
 			
 			registration = beanMapper.map(userRegistrationDTO, UserRegistration.class);
-			
+		    Collection<Roles> rolesList = new ArrayList<Roles>();
+		    rolesList.add(roles);
 			log.info("read data from user regitration queue " + registration);
           
 			try {
 				
 				registration.setPassword(bCryptPasswordEncoder.encode(registration.getPassword()));
+				registration.setRoles(rolesList);
 				registration = registrtionService.enrollUser(registration);
 				
 				if(registration ==  null) {

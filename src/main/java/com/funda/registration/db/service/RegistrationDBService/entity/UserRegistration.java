@@ -1,12 +1,15 @@
 package com.funda.registration.db.service.RegistrationDBService.entity;
 
 import java.io.Serializable;
-
+import java.util.Collection;
+import javax.persistence.CascadeType;
 import javax.persistence.Column;
 import javax.persistence.Entity;
+import javax.persistence.FetchType;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
+import javax.persistence.OneToMany;
 import javax.persistence.Table;
 import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.NotNull;
@@ -27,10 +30,6 @@ import lombok.ToString;
 @Table(name="User_Registration")
 @Component
 public class UserRegistration implements Serializable {
-
-   /**
-	 * 
-	 */
 	private static final long serialVersionUID = 1L;
 
 
@@ -40,8 +39,8 @@ public class UserRegistration implements Serializable {
     private Long id;
 	
 
-	@NotBlank(message = "name cannot be empty")
-	@NotNull
+//	@NotBlank(message = "name cannot be empty")
+//	@NotNull
 	private String sName;
 	
 	@NotBlank(message = "password cannot be empty")
@@ -59,5 +58,9 @@ public class UserRegistration implements Serializable {
 	
 	private boolean enabled;
 
-
+	@OneToMany(
+			    cascade = CascadeType.ALL,
+			    fetch = FetchType.LAZY,
+			    mappedBy = "registration")
+	private Collection<Roles> roles;
 }

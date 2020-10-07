@@ -1,15 +1,14 @@
 package com.funda.registration.db.service.RegistrationDBService.dto;
 
 import java.io.Serializable;
-
+import java.util.ArrayList;
+import java.util.Collection;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
 import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.NotNull;
-
 import org.springframework.stereotype.Component;
-
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.Getter;
@@ -24,19 +23,15 @@ import lombok.ToString;
 @Component
 public class UserRegistrationDTO implements Serializable {
 
-	   /**
-	 * 
-	 */
 	private static final long serialVersionUID = 1L;
 
 
 	   @Id
 	   @GeneratedValue(strategy = GenerationType.AUTO)
-	   private int id;
+	    private int id;
 		
-
-		@NotBlank(message = "name cannot be empty")
-		@NotNull
+	  // @NotBlank(message = "name cannot be empty")
+	//	@NotNull
 		private String sName;
 		
 		@NotBlank(message = "password cannot be empty")
@@ -52,4 +47,6 @@ public class UserRegistrationDTO implements Serializable {
 		private String username;
 		
 		private boolean enabled;
+		
+		private Collection<RolesDTO>roles = new ArrayList<RolesDTO>();
 }

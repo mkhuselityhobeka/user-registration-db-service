@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import com.funda.registration.db.service.RegistrationDBService.entity.ResetPasswordToken;
+import com.funda.registration.db.service.RegistrationDBService.entity.Roles;
 import com.funda.registration.db.service.RegistrationDBService.entity.UserRegistration;
 import com.funda.registration.db.service.RegistrationDBService.entity.VerificationToken;
 import com.funda.registration.db.service.RegistrationDBService.repository.UserRegistrationRepo;
@@ -29,6 +30,8 @@ public class UserRegistrtionService implements UserRegistrationInterface{
 	UserVerificationRepo userVerificationRepo;
 	
 	@Autowired
+	Roles roles;
+	@Autowired
 	VerificationToken verification;
 	
     @Autowired
@@ -46,7 +49,7 @@ public class UserRegistrtionService implements UserRegistrationInterface{
 			throw new UsernameExistsException("this username exists " + registration.getUsername());
 		
 		}else {
-			
+			registration.getRoles().forEach(roles -> roles.setRegistration(registration));
 			return registrationRepo.save(registration);
 		}
 		
